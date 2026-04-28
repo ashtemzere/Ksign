@@ -1,77 +1,55 @@
-name: Beta Build
+name: Create New Release
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build Beta
-    runs-on: macos-26
-
+    runs-on: macos-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
+          submodules: 'true'
           fetch-depth: 0
-          submodules: recursive
-
-      - name: Build
+      
+      - name: Use Xcode 26.2
         run: |
-          make
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
 
-      - name: Update Beta Release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Compile Feather
+        run: | 
+          agvtool new-version -all $(git rev-parse HEAD) || true
+          make || true
+          mkdir -p upload
+          # گەڕان بەدوای فایلی ipa و گواستنەوەیان بۆ فۆڵدەری upload
+          find . -name "*.ipa" -exec mv {} upload/ \;
+
+      - name: Get Version
+        id: get_version
         run: |
-          LATEST_OFFICIAL_TAG=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "")
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "## Commit: \`$COMMIT_MSG\` (${{ github.sha }})" >> release_notes.md
-          echo "### New in this build (Compared to $LATEST_OFFICIAL_TAG):" >> release_notes.md
-            
-          CHANGES=$(git log --pretty=format:"* %s (%h)" ${LATEST_OFFICIAL_TAG}..HEAD)
-            
-          if [ -z "$CHANGES" ]; then
-            echo "* No code changes since $LATEST_OFFICIAL_TAG" >> release_notes.md
-          else
-            echo "$CHANGES" >> release_notes.md
+          # هەوڵدان بۆ خوێندنەوەی ڤێرژن لە فایلی Info.plist
+          VERSION=$(find . -name "Info.plist" -exec /usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" {} \; 2>/dev/null | head -n 1)
+          if [ -z "$VERSION" ]; then
+            VERSION="1.0.0"
           fi
-          
-          echo "### Commit SHA: ${{ github.sha }}" >> release_notes.md
-          
-          cat release_notes.md
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-          gh release delete beta --cleanup-tag -y || true
-          
-          gh release create beta "packages/Ksign.ipa" \
-            --title "Latest Beta Build" \
-            --notes "$(cat release_notes.md)" \
-            --prerelease \
-            --target ${{ github.sha }}
-
-      - name: Notify Discord
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Feather v${{ env.VERSION }}
+          # زیادکردنی ژمارەی ڕەن بۆ ئەوەی تاگی دووبارە دروست نەبێت
+          tag_name: v${{ env.VERSION }}-${{ github.run_number }}
+          files: |
+            upload/*.ipa
+            **/*.ipa
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          draft: false
+          prerelease: false
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          
-          REPO="${{ github.repository }}"
-          TAG="beta"
-          FILENAME="Ksign.ipa"
-          
-          DOWNLOAD_URL="https://github.com/$REPO/releases/download/$TAG/$FILENAME"
-          RELEASE_URL="https://github.com/$REPO/releases/tag/$TAG"
-          
-          echo "Sending link to Discord..."
-          
-          jq -n \
-            --arg commit_msg "$COMMIT_MSG" \
-            --arg download_url "$DOWNLOAD_URL" \
-            --arg release_url "$RELEASE_URL" \
-            '{content: "**New Beta Released!**\n\nChanges: `\($commit_msg)`\n\n[**Download IPA**](\($download_url))\n[View Release](\($release_url))"}' > discord_payload.json
-
-          curl -v \
-            -H "Content-Type: application/json" \
-            -d @discord_payload.json \
-            "$DISCORD_WEBHOOK"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
