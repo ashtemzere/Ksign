@@ -3,7 +3,6 @@
 //  Ksign
 //
 //  Created by Nagata Asami on 5/22/25.
-//  Modified for AshteMobile App Store Look
 //
 
 import SwiftUI
@@ -66,11 +65,11 @@ struct FilesView: View {
                 }
                 .accentColor(.blue)
             } else {
-                localFilesContent // If inside a folder
+                localFilesContent
             }
         }
         .onAppear {
-            if isRootView {
+            if isRootView && storeViewModel.apps.isEmpty {
                 storeViewModel.fetchApps()
             }
             viewModel.loadFiles()
@@ -98,7 +97,7 @@ struct FilesView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
-        .navigationTitle(selectedTab == 0 ? "Ashte Store" : "Files")
+        .navigationTitle(selectedTab == 0 ? "Home" : "Files") // ناوی شاشە گۆڕا بۆ Home
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             if selectedTab == 1 {
@@ -110,100 +109,113 @@ struct FilesView: View {
         }
     }
     
-    // MARK: - 1. App Store View (Design similar to the image)
+    // MARK: - 1. App Store View (ڕێک وەک وێنەکە دیزاین کراوە)
     private var appStoreContent: some View {
         ZStack {
-            Color(UIColor.secondarySystemBackground).edgesIgnoringSafeArea(.all)
+            Color(UIColor.systemBackground).edgesIgnoringSafeArea(.all)
             
             if storeViewModel.isLoading {
                 VStack {
                     ProgressView()
                         .scaleEffect(1.5)
                         .padding()
-                    Text("خەریکی هێنانی بەرنامەکانە...")
-                        .font(.headline)
+                    Text("خەریکی هێنانی داتاکانە...")
                         .foregroundColor(.secondary)
                 }
             } else if let errorMessage = storeViewModel.errorMessage {
-                VStack(spacing: 12) {
+                VStack(spacing: 15) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.system(size: 50))
                         .foregroundColor(.red)
                     Text("کێشەیەک ڕوویدا")
                         .font(.title3.bold())
                     Text(errorMessage)
-                        .font(.subheadline)
+                        .font(.footnote)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                    Button("دووبارە هەوڵبدەرەوە") {
+                        .padding(.horizontal, 30)
+                    
+                    Button {
                         storeViewModel.fetchApps()
+                    } label: {
+                        Text("دووبارە هەوڵبدەرەوە")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 25)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.blue)
                     .padding(.top, 10)
                 }
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(storeViewModel.apps) { app in
-                            HStack(spacing: 16) {
-                                // App Icon
-                                AsyncImage(url: URL(string: app.iconURL ?? "")) { phase in
-                                    switch phase {
-                                    case .empty:
-                                        Color.gray.opacity(0.2)
-                                            .overlay(ProgressView().scaleEffect(0.8))
-                                    case .success(let image):
-                                        image.resizable().scaledToFit()
-                                    case .failure:
-                                        Image(systemName: "app.dashed")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .padding(10)
-                                            .foregroundColor(.gray)
-                                    @unknown default:
-                                        EmptyView()
-                                    }
-                                }
-                                .frame(width: 65, height: 65)
-                                .background(Color.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+                    VStack(alignment: .leading, spacing: 25) {
+                        
+                        // باکگراوندی سەرەوە (Banner)
+                        ZStack(alignment: .bottomLeading) {
+                            RoundedRectangle(cornerRadius: 15)
+                                .fill(LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.purple.opacity(0.8)]), startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(height: 180)
+                            
+                            VStack(alignment: .leading) {
+                                Text("NEW")
+                                    .font(.caption2).bold()
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .clipShape(Capsule())
                                 
-                                // App Info
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(app.name ?? "Unknown App")
-                                        .font(.system(size: 17, weight: .semibold))
-                                        .lineLimit(1)
-                                    
-                                    Text(app.developerName ?? "AshteMobile Team")
-                                        .font(.system(size: 13))
-                                        .foregroundColor(.secondary)
-                                }
+                                Text("AshteMobile Apps")
+                                    .font(.title2).bold()
+                                    .foregroundColor(.white)
                                 
-                                Spacer()
-                                
-                                // Get Button
-                                GetButton(
-                                    fileSize: storeViewModel.formatSize(app.size),
-                                    action: {
-                                        if let downloadURLString = app.downloadURL, let url = URL(string: downloadURLString) {
-                                            print("Downloading from: \(url)")
-                                            // TODO: Pass this to your DownloadManager
-                                            // e.g. let _ = downloadManager.startArchive(from: url, id: app.id)
-                                        }
-                                    }
-                                )
+                                Text("باشترین بەرنامەکان لێرە داگرە")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.9))
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .background(Color(UIColor.systemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .padding(.horizontal, 16)
+                            .padding()
                         }
+                        .padding(.horizontal)
+                        
+                        // بەشی Apps
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Apps")
+                                .font(.title2).bold()
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 15) {
+                                    // بۆ ئەوەی جوان دەربکەوێت، نیوەی سەرەتای ئەپەکان لێرە نیشان دەدەین
+                                    ForEach(storeViewModel.apps) { app in
+                                        AppStoreCard(app: app, viewModel: storeViewModel)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        
+                        // بەشی Games
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Games")
+                                .font(.title2).bold()
+                                .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 15) {
+                                    // نیشاندانی ئەپەکان بە پێچەوانەوە بۆ ئەوەی جیاواز دەربکەوێت
+                                    ForEach(storeViewModel.apps.reversed()) { app in
+                                        AppStoreCard(app: app, viewModel: storeViewModel)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                        
+                        Spacer(minLength: 40)
                     }
-                    .padding(.vertical)
+                    .padding(.top, 10)
                 }
                 .refreshable {
                     storeViewModel.fetchApps()
@@ -224,7 +236,6 @@ struct FilesView: View {
                             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                                 .foregroundColor(isSelected ? .blue : .gray)
                                 .font(.title3)
-                                .transition(.scale)
                         }
                         
                         Image(systemName: file.isAppDirectory ? "app.dashed" : (file.isDirectory ? "folder.fill" : "doc.fill"))
@@ -290,7 +301,69 @@ struct FilesView: View {
     }
 }
 
-// MARK: - Get Button Component (Animated App Store Button)
+// MARK: - App Card Component (ڕێک وەک وێنەکە)
+struct AppStoreCard: View {
+    let app: AppItem
+    let viewModel: StoreViewModel
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // App Icon
+            AsyncImage(url: URL(string: app.iconURL)) { phase in
+                switch phase {
+                case .empty:
+                    Color.gray.opacity(0.2)
+                        .overlay(ProgressView().scaleEffect(0.8))
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .failure:
+                    // لۆگۆی دیفۆڵت ئەگەر وێنە نەبوو
+                    Image(systemName: "app.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .padding(15)
+                        .foregroundColor(.blue.opacity(0.5))
+                        .background(Color(.systemGray6))
+                @unknown default:
+                    EmptyView()
+                }
+            }
+            .frame(width: 85, height: 85)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+            
+            // App Name
+            Text(app.name)
+                .font(.system(size: 14, weight: .bold))
+                .lineLimit(1)
+                .frame(width: 85)
+            
+            // Rating / Info
+            HStack(spacing: 2) {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.yellow)
+                    .font(.system(size: 10))
+                Text("4.6") // ژمارەی وەهمی بۆ دیزاین
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            
+            // Get Button
+            GetButton(
+                fileSize: viewModel.formatSize(app.size),
+                action: {
+                    if let url = URL(string: app.downloadURL) {
+                        print("Downloading from: \(url)")
+                        // DownloadManager.shared.startArchive(...)
+                    }
+                }
+            )
+        }
+        .frame(width: 100)
+    }
+}
+
+// MARK: - Get Button Component
 struct GetButton: View {
     let fileSize: String
     let action: () -> Void
@@ -319,55 +392,29 @@ struct GetButton: View {
                             }
                         }
                 } else {
-                    VStack(spacing: 2) {
-                        Text("GET")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(.blue)
-                            .padding(.horizontal, 18)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.12))
-                            .clipShape(Capsule())
-                        
-                        if !fileSize.isEmpty {
-                            Text(fileSize)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    Text("Get")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(.blue)
+                        .frame(width: 70, height: 28)
+                        .background(Color.blue.opacity(0.12))
+                        .clipShape(Capsule())
                 }
             }
-            .frame(width: 65)
         }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - App Store Models & ViewModel
+// MARK: - App Store Models & Bulletproof ViewModel
 
-struct AppItem: Codable, Identifiable {
-    var id: String { bundleIdentifier ?? name ?? UUID().uuidString }
-    
-    // Everything is optional to prevent JSON decoding errors
-    let name: String?
-    let bundleIdentifier: String?
-    let developerName: String?
-    let version: String?
-    let iconURL: String?
-    let downloadURL: String?
-    let size: Int64?
-    
-    // Check for different possible JSON key names
-    enum CodingKeys: String, CodingKey {
-        case name, version, size
-        case bundleIdentifier = "bundleIdentifier"
-        case developerName = "developerName"
-        case iconURL = "iconURL"
-        case downloadURL = "downloadURL"
-    }
-}
-
-struct AppStoreResponse: Codable {
-    let apps: [AppItem]?
+// مۆدێلێکی زۆر سادە کە بە دەست دروست دەکرێت، پێویستی بە Codable نییە
+struct AppItem: Identifiable {
+    var id: String
+    let name: String
+    let developerName: String
+    let iconURL: String
+    let downloadURL: String
+    let size: Int64
 }
 
 class StoreViewModel: ObservableObject {
@@ -381,9 +428,8 @@ class StoreViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         
-        // Use a standard browser User-Agent so the server doesn't block the request
         var request = URLRequest(url: url)
-        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1", forHTTPHeaderField: "User-Agent")
+        request.setValue("Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15", forHTTPHeaderField: "User-Agent")
         request.httpMethod = "GET"
         
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
@@ -396,27 +442,75 @@ class StoreViewModel: ObservableObject {
                 }
                 
                 guard let data = data else {
-                    self?.errorMessage = "داتایەک نەدۆزرایەوە."
+                    self?.errorMessage = "هیچ داتایەک نەگەڕایەوە."
                     return
                 }
                 
-                // Flexible JSON Decoding
+                // بەکارهێنانی Manual Parsing کە هەرگیز کێشەی بۆ دروست نابێت
                 do {
-                    // Try 1: Is it an array of apps?
-                    if let array = try? JSONDecoder().decode([AppItem].self, from: data) {
-                        self?.apps = array.filter { $0.name != nil }
-                    }
-                    // Try 2: Is it an object containing an "apps" array?
-                    else if let dict = try? JSONDecoder().decode(AppStoreResponse.self, from: data), let fetchedApps = dict.apps {
-                        self?.apps = fetchedApps.filter { $0.name != nil }
-                    }
-                    // Failure: Could not read it
-                    else {
-                        self?.errorMessage = "نەتوانرا فایلە JSONـەکە بخوێنرێتەوە. دڵنیابە لە دروستی فایلەکە."
+                    var extractedApps: [[String: Any]] = []
+                    
+                    if let jsonObject = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+                        // گەڕان بۆ لیستی ئەپەکان لە ناو فایلەکەدا
+                        if let appsArray = jsonObject["apps"] as? [[String: Any]] {
+                            extractedApps = appsArray
+                        } else if let appsArray = jsonObject["app"] as? [[String: Any]] {
+                            extractedApps = appsArray
+                        } else {
+                            // ئەگەر ناوی فۆڵدەرەکەش نەزانین، بۆی دەگەڕێین
+                            for (_, value) in jsonObject {
+                                if let arr = value as? [[String: Any]] {
+                                    extractedApps = arr
+                                    break
+                                }
+                            }
+                        }
+                    } else if let jsonArray = try JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+                        // ئەگەر فایلەکە ڕاستەوخۆ لیستێک بێت
+                        extractedApps = jsonArray
                     }
                     
-                    if self?.apps.isEmpty == true && self?.errorMessage == nil {
-                        self?.errorMessage = "هیچ بەرنامەیەک لە فایلەکەدا نەدۆزرایەوە."
+                    var tempApps: [AppItem] = []
+                    for dict in extractedApps {
+                        // دەرهێنانی ناوەکان بە هەموو شێوەیەک
+                        let name = dict["name"] as? String ?? dict["title"] as? String ?? "Unknown App"
+                        let icon = dict["iconURL"] as? String ?? dict["icon"] as? String ?? dict["image"] as? String ?? ""
+                        let download = dict["downloadURL"] as? String ?? dict["url"] as? String ?? dict["ipa"] as? String ?? ""
+                        let dev = dict["developerName"] as? String ?? dict["developer"] as? String ?? "AshteMobile"
+                        let bundleId = dict["bundleIdentifier"] as? String ?? UUID().uuidString
+                        
+                        var sizeVal: Int64 = 0
+                        if let s = dict["size"] as? Int64 { sizeVal = s }
+                        else if let sStr = dict["size"] as? String, let s = Int64(sStr) { sizeVal = s }
+                        
+                        let item = AppItem(
+                            id: bundleId,
+                            name: name,
+                            developerName: dev,
+                            iconURL: icon,
+                            downloadURL: download,
+                            size: sizeVal
+                        )
+                        tempApps.append(item)
+                    }
+                    
+                    self?.apps = tempApps
+                    
+                    if tempApps.isEmpty {
+                        // ئەگەر داتاکە HTML بێت نەک JSON (وەک Cloudflare)
+                        if let str = String(data: data, encoding: .utf8), str.contains("<html") {
+                            self?.errorMessage = "سێرڤەرەکە ڕێگە نادات (Cloudflare Protection) تکایە لینکەکە بگۆڕە."
+                        } else {
+                            self?.errorMessage = "فایلەکە کرایەوە، بەڵام هیچ یاری یان بەرنامەیەک نەدۆزرایەوە."
+                        }
+                    }
+                    
+                } catch {
+                    // ئەگەر بە هیچ جۆرێک نەخوێنرایەوە
+                    if let str = String(data: data, encoding: .utf8), str.contains("<html") {
+                        self?.errorMessage = "سێرڤەرەکە بلۆکی کردووە (Cloudflare). دەبێت لینکی ڕاستەوخۆ بەکاربێنی."
+                    } else {
+                        self?.errorMessage = "شێوازی فایلی JSON هەڵەیە."
                     }
                 }
             }
@@ -424,7 +518,7 @@ class StoreViewModel: ObservableObject {
     }
     
     func formatSize(_ size: Int64?) -> String {
-        guard let size = size, size > 0 else { return "APP" }
+        guard let size = size, size > 0 else { return "" }
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useMB, .useGB]
         formatter.countStyle = .file
